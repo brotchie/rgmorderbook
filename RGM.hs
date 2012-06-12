@@ -9,6 +9,10 @@ module RGM (
 ) where
 
 import Data.Maybe
+
+-- Haskell strings are unicode linked lists; not
+-- good for performance. For this reason we use
+-- raw ByteString objects. Around 50x faster.
 import qualified Data.ByteString.Lex.Double as LD
 import qualified Data.ByteString.Char8 as C
  
@@ -29,31 +33,35 @@ data LogEntry = AddOrder{timestamp :: Timestamp, orderid :: OrderId,
               | ReduceOrder{timestamp :: Timestamp, orderid :: OrderId, size :: Size}
               deriving Show
  
-data Message = Add
-             | Reduce
-
+readInt :: C.ByteString -> Int
 readInt = fst . fromJust . C.readInt
+
+readDouble :: C.ByteString -> Double
 readDouble = fst . fromJust . LD.readDouble
+
+readSide :: C.ByteString -> Side
 readSide x
   = case C.head x of
         'B' -> Bid
         'S' -> Ask
 
-parseAddOrder [timestamp, orderid, side, price, size]
-  = AddOrder (readInt timestamp) orderid (readSide side)
+
+parseLogEntry :: [C.ByteString] -> Maybe LogEntry
+parseLogEntry [timestamp, _, orderid, side, price, size]
+  = Just $ AddOrder (readInt timestamp) orderid (readSide side)
       (readDouble price)
       (readInt size)
+parseLogEntry [timestamp, _, orderid, size]
+  = Just $ ReduceOrder (readInt timestamp) orderid (readInt size)
+parseLogEntry _ = Nothing
 
-parseReduceOrder [timestamp, orderid, size]
-  = ReduceOrder (readInt timestamp) orderid (readInt size)
+dot = ((.) . (.))
+infixr 8 `dot`
 
-parseLogLine line
-  = case message of
-        'A' -> parseAddOrder $ map ((!!) elements) [0, 2, 3, 4, 5]
-        'R' -> parseReduceOrder $ map ((!!) elements) [0, 2, 3]
-  where elements = C.words line
-        message = C.head $ elements !! 1
+-- Faster than base mapMaybe.
+mapMaybe' :: (a -> Maybe b) -> [a] -> [b]
+mapMaybe' = map fromJust . filter isJust `dot` map 
 
 parseLogFile :: C.ByteString -> [LogEntry]
-parseLogFile content = map parseLogLine $ C.lines content
+parseLogFile content = mapMaybe' (parseLogEntry . C.words) $ C.lines content
 
