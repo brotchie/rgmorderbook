@@ -1,4 +1,4 @@
-module RGM (
+module Data.OrderBook.RGM (
     parseLogFile,
     LogEntry,
     timestamp,

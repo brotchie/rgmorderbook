@@ -1,6 +1,6 @@
 module Main where
 
-import RGM
+import Data.OrderBook.RGM
 import Control.Monad
 import qualified Data.ByteString.Char8 as C
 

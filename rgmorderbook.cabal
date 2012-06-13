@@ -1,0 +1,11 @@
+Name:           rgmorderbook
+Version:        0.0
+Build-Type:     Simple
+Cabal-Version:  >=1.2
+Executable rgmorderbook
+  Main-is: Main.hs
+  Build-Depends:    base >= 3,
+                    bytestring >= 0.9,
+                    bytestring-lexing
+
+  ghc-options: -O2
