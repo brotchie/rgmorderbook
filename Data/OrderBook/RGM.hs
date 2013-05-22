@@ -1,11 +1,11 @@
 module Data.OrderBook.RGM (
     parseLogFile,
-    LogEntry,
-    timestamp,
-    orderid,
-    side,
-    price,
-    size
+    Timestamp,
+    OrderId,
+    Price,
+    Size,
+    Side (..),
+    LogEntry (..),
 ) where
 
 import Data.Maybe
@@ -14,11 +14,12 @@ import Data.Maybe
 -- good for performance. For this reason we use
 -- raw ByteString objects. Around 50x faster.
 import qualified Data.ByteString.Lex.Double as LD
-import qualified Data.ByteString.Char8 as C
+import qualified Data.ByteString.Char8 as B
+import Data.ByteString.Char8 (ByteString)
  
 type Timestamp = Int
  
-type OrderId = C.ByteString
+type OrderId = ByteString
  
 type Price = Double
  
@@ -26,27 +27,26 @@ type Size = Int
  
 data Side = Bid
           | Ask
-          deriving Show
+          deriving (Show, Eq)
  
 data LogEntry = AddOrder{timestamp :: Timestamp, orderid :: OrderId,
                          side :: Side, price :: Price, size :: Size}
               | ReduceOrder{timestamp :: Timestamp, orderid :: OrderId, size :: Size}
               deriving Show
  
-readInt :: C.ByteString -> Int
-readInt = fst . fromJust . C.readInt
+readInt :: ByteString -> Int
+readInt = fst . fromJust . B.readInt
 
-readDouble :: C.ByteString -> Double
+readDouble :: ByteString -> Double
 readDouble = fst . fromJust . LD.readDouble
 
-readSide :: C.ByteString -> Side
+readSide :: ByteString -> Side
 readSide x
-  = case C.head x of
+  = case B.head x of
         'B' -> Bid
         'S' -> Ask
 
-
-parseLogEntry :: [C.ByteString] -> Maybe LogEntry
+parseLogEntry :: [ByteString] -> Maybe LogEntry
 parseLogEntry [timestamp, _, orderid, side, price, size]
   = Just $ AddOrder (readInt timestamp) orderid (readSide side)
       (readDouble price)
@@ -55,13 +55,13 @@ parseLogEntry [timestamp, _, orderid, size]
   = Just $ ReduceOrder (readInt timestamp) orderid (readInt size)
 parseLogEntry _ = Nothing
 
-dot = ((.) . (.))
+dot = (.) . (.)
 infixr 8 `dot`
 
 -- Faster than base mapMaybe.
 mapMaybe' :: (a -> Maybe b) -> [a] -> [b]
 mapMaybe' = map fromJust . filter isJust `dot` map 
 
-parseLogFile :: C.ByteString -> [LogEntry]
-parseLogFile content = mapMaybe' (parseLogEntry . C.words) $ C.lines content
+parseLogFile :: ByteString -> [LogEntry]
+parseLogFile content = mapMaybe' (parseLogEntry . B.words) $ B.lines content
 

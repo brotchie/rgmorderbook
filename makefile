@@ -12,3 +12,7 @@ benchmark : Main
 
 clean : 
 	rm -f Main *.o *.hi
+
+CXXFLAGS=-std=gnu++0x -O3
+LDLIBS=-lrt
+fastreader: reader.cpp fastreader.cpp reader.h
